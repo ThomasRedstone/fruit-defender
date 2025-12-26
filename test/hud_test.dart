@@ -1,0 +1,37 @@
+import 'package:flame_test/flame_test.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:fruit_defender/game/fruit_defender_game.dart';
+import 'package:fruit_defender/ui/hud.dart';
+import 'package:fruit_defender/game/wave_manager.dart';
+
+void main() {
+  group('HUD Tests', () {
+    testWithGame<FruitDefenderGame>(
+        'HUD updates text correctly', FruitDefenderGame.new, (game) async {
+      // Find HUD
+      final hud = game.children.whereType<Hud>().first;
+
+      // Initial state verify (Money 500, Lives 20, Wave 1)
+      game.update(0); // Trigger update
+      expect(hud.hudText.text, contains('Money: \$500'));
+      expect(hud.hudText.text, contains('Lives: 20'));
+      expect(hud.hudText.text, contains('Wave: 1'));
+
+      // Modify game state
+      game.money = 1000;
+      game.lives = 10;
+
+      // Find WaveManager and update wave
+      final waveManager = game.children.whereType<WaveManager>().first;
+      waveManager.currentWave = 5;
+
+      // Update game loop
+      game.update(0.1);
+
+      // Verify HUD text update
+      expect(hud.hudText.text, contains('Money: \$1000'));
+      expect(hud.hudText.text, contains('Lives: 10'));
+      expect(hud.hudText.text, contains('Wave: 5'));
+    });
+  });
+}

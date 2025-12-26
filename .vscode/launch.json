@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "fruit_defender",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart",
+            "args": [
+                "-d",
+                "chrome"
+            ],
+            "env": {
+                "CHROME_EXECUTABLE": "/var/lib/flatpak/exports/bin/com.google.Chrome"
+            }
+        }
+    ]
+}
