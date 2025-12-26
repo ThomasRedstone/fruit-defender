@@ -5,7 +5,7 @@ import 'enemy.dart';
 import 'projectile.dart';
 import '../game/fruit_defender_game.dart';
 
-enum TowerType { WIZARD, SNIPER, NINJA, FACTORY }
+enum TowerType { WIZARD, SNIPER, NINJA, FACTORY, BERSERKER, MISSILE }
 
 class Tower extends SpriteComponent with HasGameRef<FruitDefenderGame> {
   final TowerType type;
@@ -36,8 +36,19 @@ class Tower extends SpriteComponent with HasGameRef<FruitDefenderGame> {
         fireRate = 5.0; // Production rate
         size = Vector2(40, 40);
         break;
+      case TowerType.BERSERKER:
+        range = 80;
+        damage = 25;
+        fireRate = 0.5;
+        size = Vector2(32, 32);
+        break;
+      case TowerType.MISSILE:
+        range = 250;
+        damage = 40;
+        fireRate = 2.5;
+        size = Vector2(32, 32);
+        break;
       case TowerType.WIZARD:
-      default:
         range = 200;
         damage = 15;
         fireRate = 1.0;
@@ -61,6 +72,10 @@ class Tower extends SpriteComponent with HasGameRef<FruitDefenderGame> {
         break;
       case TowerType.FACTORY:
         spriteAsset = 'tower_factory.png';
+        break;
+      case TowerType.BERSERKER:
+      case TowerType.MISSILE:
+        spriteAsset = null; // User requested black dots/no textures
         break;
       default:
         spriteAsset = null;
@@ -123,8 +138,16 @@ class Tower extends SpriteComponent with HasGameRef<FruitDefenderGame> {
   void _shoot(Enemy target) {
     // Spawn Projectile
     double speed = 600.0;
+    double splash = 0.0;
+
     if (type == TowerType.SNIPER) {
       speed = 2400.0; // 4x speed
+    } else if (type == TowerType.MISSILE) {
+      speed = 400.0; // Slow missile
+      splash = 100.0; // Splash radius
+    } else if (type == TowerType.BERSERKER) {
+      // Technically melee, but implementing as very short range projectile for now
+      speed = 1000.0;
     }
 
     final projectile = Projectile(
@@ -132,6 +155,7 @@ class Tower extends SpriteComponent with HasGameRef<FruitDefenderGame> {
       target: target,
       damage: damage,
       speed: speed,
+      splashRadius: splash,
     );
     gameRef.add(projectile);
   }
@@ -140,6 +164,9 @@ class Tower extends SpriteComponent with HasGameRef<FruitDefenderGame> {
   void render(Canvas canvas) {
     if (sprite != null) {
       super.render(canvas);
+      // No return here if we want to draw debug overlay, but usually we just want the sprite.
+      // However, the original code had a return in my previous thought block.
+      // Let's stick to: if sprite exists, draw it and exit.
       return;
     }
 
@@ -153,15 +180,25 @@ class Tower extends SpriteComponent with HasGameRef<FruitDefenderGame> {
         color = const Color(0xFF000000);
         break;
       case TowerType.FACTORY:
-        color = const Color(0xFFFFD700);
-        break; // Gold
+        color = const Color(0xFFFFD700); // Gold
+        break;
+      case TowerType.BERSERKER:
+      case TowerType.MISSILE:
+        color = const Color(0xFF000000); // Black dots
+        break;
       default:
         break;
     }
 
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.x, size.y),
-      Paint()..color = color,
-    );
+    // Draw Circle for "Black Dots" requested style (or rect for others)
+    if (type == TowerType.BERSERKER || type == TowerType.MISSILE) {
+      canvas.drawCircle(
+          Offset(size.x / 2, size.y / 2), size.x / 2, Paint()..color = color);
+    } else {
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, size.x, size.y),
+        Paint()..color = color,
+      );
+    }
   }
 }

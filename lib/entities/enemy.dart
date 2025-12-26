@@ -27,10 +27,7 @@ class Enemy extends SpriteComponent with HasGameRef<FruitDefenderGame> {
     if (currentWaypointIndex >= waypoints.length - 1) {
       removeFromParent(); // Reached end
       gameRef.lives -= 1;
-      if (gameRef.lives <= 0) {
-        print("GAME OVER");
-        gameRef.pauseEngine();
-      }
+      gameRef.checkGameOver();
       return;
     }
 

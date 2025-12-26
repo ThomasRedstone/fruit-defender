@@ -16,6 +16,8 @@ void main() {
       'Wave should increment after enemies act',
       verify: (game, tester) async {
         final waveManager = game.children.whereType<WaveManager>().first;
+        game.startGame(); // Ensure game is running (unpaused)
+        await tester.pump();
         expect(waveManager.currentWave, 1);
 
         // Simulate time passing (lots of time)
@@ -45,9 +47,8 @@ void main() {
 
         // Simulate game loop: 50 seconds at 0.1s increments (500 steps)
         // Enough time for 5 enemies to spawn (10s) and travel/die (~20s)
-        for (int i = 0; i < 1000; i++) {
-          game.update(0.1);
-        }
+        // Simulate game loop: 50 seconds
+        await tester.pump(const Duration(seconds: 50));
 
         // The user says "remaining at 1".
         // Now it should be > 1

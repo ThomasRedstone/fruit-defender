@@ -44,7 +44,6 @@ We will start with a reduced subset of the full vision to ensure a solid foundat
 4. **Factory (Eco)**
    - Role: Generates Money.
    - Mechanic: Creates money that must be hovered over to collect, with half being automatically collected after a delay.
-
 *(Future: Beserker, Missile, Sherriff, Pirate, Beast Handler, Fruit Spawner)*
 
 ### 4.2. Enemies (MVP)

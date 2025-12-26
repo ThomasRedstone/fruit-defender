@@ -93,7 +93,7 @@ void main() async {
       }
 
       // 2. Trim Whitespace (Auto-crop)
-      image = findTrim(image);
+      // image = findTrim(image); // DISABLED: Causing distortion on small sprites
 
       // Save
       await file.writeAsBytes(encodePng(image));

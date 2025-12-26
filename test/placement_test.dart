@@ -31,29 +31,23 @@ void main() {
         final image = await createTestImage();
         game.images.add('defender_wizard.png', image);
         game.images.add('tower_factory.png', image);
+        game.startGame();
+        game.overlays.clear(); // Explicitly remove all overlays
+        await tester.pump();
 
         game.money = 1000;
         game.selectedTower = TowerType.WIZARD; // Cost 100
 
-        // Place first tower at 100,100
-        await tester.tapAt(const Offset(100, 100));
-        await tester.pump();
-        game.update(0.1);
+        // Place first tower at 50,50 (Safe spot, away from 0,100 path)
+        await tester.tapAt(const Offset(50, 50));
+        await tester.pump(const Duration(milliseconds: 100));
 
         expect(game.children.whereType<Tower>().length, 1);
         expect(game.money, 900);
 
         // Try place second tower at same spot (collision)
-        await tester.tapAt(const Offset(100, 100));
-        await tester.pump();
-
-        // Clear timers
-        await tester.pump(const Duration(seconds: 1));
-
-        // Clear timers
-        await tester.pump(const Duration(seconds: 1));
-
-        game.update(0.1);
+        await tester.tapAt(const Offset(50, 50));
+        await tester.pump(const Duration(milliseconds: 100));
 
         // Should FAIL to add tower, Money should NOT decrease
         expect(game.children.whereType<Tower>().length, 1);

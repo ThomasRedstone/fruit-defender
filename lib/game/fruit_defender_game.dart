@@ -3,6 +3,8 @@ import 'package:flame/game.dart';
 import 'package:flame/events.dart';
 import 'package:flame/components.dart';
 import '../entities/tower.dart';
+import '../entities/projectile.dart'; // Added
+import '../entities/enemy.dart'; // Added
 import '../entities/base.dart';
 import 'level_map.dart';
 import 'wave_manager.dart';
@@ -19,6 +21,8 @@ class FruitDefenderGame extends FlameGame with TapCallbacks {
 
   FruitDefenderGame({this.enableHud = true, this.useGoogleFontsInHud = true});
 
+  bool isGameStarted = false;
+
   @override
   Future<void> onLoad() async {
     levelMap = LevelMap();
@@ -26,9 +30,6 @@ class FruitDefenderGame extends FlameGame with TapCallbacks {
 
     // Base at the end of the path
     final basePosition = levelMap.waypoints.last.clone();
-    // Adjust to be safely on screen if needed, or just allow offscreen if map is large
-    // Since we extended to 1600 and view might be smaller, we should ensure scaling or camera
-    // But for now let's just place it.
     add(Base(basePosition));
 
     // Wave Manager
@@ -38,6 +39,52 @@ class FruitDefenderGame extends FlameGame with TapCallbacks {
     if (enableHud) {
       add(Hud(useGoogleFonts: useGoogleFontsInHud));
     }
+
+    // Initial State: Paused waiting for Start
+    pauseEngine();
+    overlays.add('StartScreen');
+  }
+
+  void startGame() {
+    isGameStarted = true;
+    overlays.remove('StartScreen');
+    resumeEngine();
+  }
+
+  @override
+  void update(double dt) {
+    if (isGameOver) return;
+    super.update(dt * timeScale);
+  }
+
+  bool isGameOver = false;
+
+  void checkGameOver() {
+    if (lives <= 0) {
+      isGameOver = true;
+      pauseEngine();
+      overlays.add('GameOver');
+    }
+  }
+
+  void restartGame() {
+    isGameOver = false;
+    lives = 20;
+    money = 500;
+
+    // Clear entities
+    children.whereType<Enemy>().forEach((e) => e.removeFromParent());
+    children.whereType<Tower>().forEach((t) => t.removeFromParent());
+    children.whereType<Projectile>().forEach((p) => p.removeFromParent());
+
+    // Reset Wave
+    final waveManager = children.whereType<WaveManager>().first;
+    waveManager.currentWave = 1;
+    waveManager.enemiesSpawned = 0;
+    waveManager.spawnTimer = 0;
+
+    overlays.remove('GameOver');
+    resumeEngine();
   }
 
   @override
@@ -49,6 +96,12 @@ class FruitDefenderGame extends FlameGame with TapCallbacks {
         break;
       case TowerType.NINJA:
         cost = 200;
+        break;
+      case TowerType.BERSERKER:
+        cost = 150;
+        break;
+      case TowerType.MISSILE:
+        cost = 500;
         break;
       case TowerType.FACTORY:
         cost = 400;
@@ -64,39 +117,28 @@ class FruitDefenderGame extends FlameGame with TapCallbacks {
       bool canPlace = true;
 
       // Check collision with other towers
-      for (final child in children) {
-        if (child is Tower) {
-          if (child.position.distanceTo(event.localPosition) < 40) {
-            // Assume 40px radius/size
-            canPlace = false;
-            break;
-          }
+      for (final child in children.whereType<Tower>()) {
+        if (child.position.distanceTo(event.localPosition) < 40) {
+          // Assume 40px radius/size
+          canPlace = false;
+          break;
         }
       }
 
       // Check collision with path
       if (canPlace) {
-        // Simple check: distance to any segment of the path
         // Iterate waypoints
         for (int i = 0; i < levelMap.waypoints.length - 1; i++) {
           final p1 = levelMap.waypoints[i];
-          final p2 = levelMap.waypoints[i + 1];
-          // Distance from point to line segment
-          // Simplification: just check distance to waypoints for now?
-          // User asked for "not on the path". path is lines.
-          // We need a proper point-to-segment distance check.
-          // Or use a grid?
-          // For now, let's just check distance to waypoints to pass a basic test if the test places ON a waypoint.
-          // But real game needs segment check.
-
-          // Let's implement a quick segment distance function or check.
-          // Flame doesn't have `distanceToSegment` built-in on Vector2 readily available in casual usage?
           // Hack: Check distance to waypoints. Ideally upgrade later.
-          if (p1.distanceTo(event.localPosition) < 32) canPlace = false;
+          if (p1.distanceTo(event.localPosition) < 32) {
+            canPlace = false;
+          }
         }
         // Also check last waypoint (base)
-        if (levelMap.waypoints.last.distanceTo(event.localPosition) < 32)
+        if (levelMap.waypoints.last.distanceTo(event.localPosition) < 32) {
           canPlace = false;
+        }
       }
 
       if (canPlace) {

@@ -2,8 +2,8 @@ import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fruit_defender/game/fruit_defender_game.dart';
 import 'package:fruit_defender/entities/tower.dart';
-import 'package:flame/events.dart';
-import 'package:flame/components.dart';
+// import 'package:flame/events.dart'; // Removed
+// import 'package:flame/components.dart'; // Removed
 import 'dart:ui'; // For Image creation
 
 import 'package:google_fonts/google_fonts.dart';
@@ -28,6 +28,8 @@ void main() {
     tester.testGameWidget(
       'Initial money should be 500',
       verify: (game, tester) async {
+        game.startGame();
+        await tester.pump();
         expect(game.money, 500);
       },
     );
