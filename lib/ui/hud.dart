@@ -7,21 +7,32 @@ import '../game/wave_manager.dart';
 
 class Hud extends PositionComponent with HasGameRef<FruitDefenderGame> {
   late TextComponent hudText;
+  final bool useGoogleFonts;
+
+  Hud({this.useGoogleFonts = true}) {
+    priority = 100;
+  }
 
   @override
   Future<void> onLoad() async {
     // Pixel/Blocky Font style
-    final textStyle = GoogleFonts.vt323(
-      fontSize: 24.0,
-      color: const Color(0xFFFFFFFF),
-      shadows: [
-        const Shadow(
-          blurRadius: 2.0,
-          color: Color(0xFF000000),
-          offset: Offset(2.0, 2.0),
-        ),
-      ],
-    );
+    final textStyle = useGoogleFonts
+        ? GoogleFonts.vt323(
+            fontSize: 24.0,
+            color: const Color(0xFFFFFFFF),
+            shadows: [
+              const Shadow(
+                blurRadius: 2.0,
+                color: Color(0xFF000000),
+                offset: Offset(2.0, 2.0),
+              ),
+            ],
+          )
+        : const TextStyle(
+            fontSize: 24.0,
+            color: Color(0xFFFFFFFF),
+          );
+
     final textRenderer = TextPaint(style: textStyle);
 
     hudText = TextComponent(

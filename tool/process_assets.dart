@@ -12,9 +12,24 @@ void main() async {
     if (file is File && file.path.endsWith('.png')) {
       print('Processing ${file.path}...');
       final bytes = await file.readAsBytes();
-      Image? image = decodePng(bytes);
+      var image = decodeImage(bytes);
 
       if (image == null) continue;
+
+      // Ensure 4 channels (RGBA)
+      if (image.numChannels < 4) {
+        print('  Converting to 4 channels (RGBA)...');
+        final newImage =
+            Image(width: image.width, height: image.height, numChannels: 4);
+        for (final p in newImage) {
+          final oldP = image!.getPixel(p.x, p.y);
+          p.r = oldP.r;
+          p.g = oldP.g;
+          p.b = oldP.b;
+          p.a = 255;
+        }
+        image = newImage;
+      }
 
       print('  Inspecting ${file.path}...');
       final topLeft = image.getPixel(0, 0);
@@ -33,13 +48,18 @@ void main() async {
       ];
 
       for (final start in corners) {
-        final startColor = image.getPixel(start.x.toInt(), start.y.toInt());
-        if (startColor.a == 0) continue; // Already transparent
+        final startPixel = image.getPixel(start.x.toInt(), start.y.toInt());
+        if (startPixel.a == 0) continue; // Already transparent
 
-        print('  Flood filling from $start (Color: ${startColor})...');
+        final startR = startPixel.r;
+        final startG = startPixel.g;
+        final startB = startPixel.b;
+
+        print('  Flood filling from $start (Color: $startPixel)...');
 
         final queue = <Point>[Point(start.x.toInt(), start.y.toInt())];
         final visited = <Point>{};
+        int erasedCount = 0;
 
         while (queue.isNotEmpty) {
           final p = queue.removeLast();
@@ -51,9 +71,9 @@ void main() async {
 
           final pixel = image.getPixel(p.x.toInt(), p.y.toInt());
           // Tolerance check against start color
-          int diff = (pixel.r - startColor.r).abs().toInt() +
-              (pixel.g - startColor.g).abs().toInt() +
-              (pixel.b - startColor.b).abs().toInt();
+          int diff = (pixel.r - startR).abs().toInt() +
+              (pixel.g - startG).abs().toInt() +
+              (pixel.b - startB).abs().toInt();
 
           if (diff < 50) {
             // Tolerance
@@ -61,6 +81,7 @@ void main() async {
             pixel.g = 0;
             pixel.b = 0;
             pixel.a = 0;
+            erasedCount++;
 
             queue.add(Point(p.x + 1, p.y));
             queue.add(Point(p.x - 1, p.y));
@@ -68,6 +89,7 @@ void main() async {
             queue.add(Point(p.x, p.y - 1));
           }
         }
+        print('    Erased $erasedCount pixels from corner $start');
       }
 
       // 2. Trim Whitespace (Auto-crop)

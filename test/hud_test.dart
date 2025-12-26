@@ -4,10 +4,17 @@ import 'package:fruit_defender/game/fruit_defender_game.dart';
 import 'package:fruit_defender/ui/hud.dart';
 import 'package:fruit_defender/game/wave_manager.dart';
 
+import 'package:google_fonts/google_fonts.dart';
+
 void main() {
+  setUpAll(() {
+    GoogleFonts.config.allowRuntimeFetching = false;
+  });
+
   group('HUD Tests', () {
-    testWithGame<FruitDefenderGame>(
-        'HUD updates text correctly', FruitDefenderGame.new, (game) async {
+    // Disable Google Fonts for tests
+    testWithGame<FruitDefenderGame>('HUD updates text correctly',
+        () => FruitDefenderGame(useGoogleFontsInHud: false), (game) async {
       // Find HUD
       final hud = game.children.whereType<Hud>().first;
 

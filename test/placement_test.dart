@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fruit_defender/game/fruit_defender_game.dart';
 import 'package:fruit_defender/entities/tower.dart';
 import 'package:flame/events.dart';
-import 'package:flame/components.dart';
-import 'dart:ui'; // For Image creation
+import 'package:flutter/material.dart' hide Image; // Fix type conflict
+import 'dart:ui'; // For Image mock
 
 import 'package:google_fonts/google_fonts.dart';
 
@@ -21,45 +21,43 @@ void main() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
-  group('Economy Tests', () {
-    // Disable HUD to avoid font loading issues in Economy tests
+  group('Placement Tests', () {
     final tester = FlameTester(() => FruitDefenderGame(enableHud: false));
 
     tester.testGameWidget(
-      'Initial money should be 500',
+      'Should not place tower on top of another tower',
       verify: (game, tester) async {
-        expect(game.money, 500);
-      },
-    );
-
-    tester.testGameWidget(
-      'Factory cost regression test',
-      verify: (game, tester) async {
-        // Mock image for Factory
+        // Setup
         final image = await createTestImage();
+        game.images.add('defender_wizard.png', image);
         game.images.add('tower_factory.png', image);
 
-        // Setup state
-        game.money = 500;
-        game.selectedTower = TowerType.FACTORY;
+        game.money = 1000;
+        game.selectedTower = TowerType.WIZARD; // Cost 100
 
-        expect(game.money, greaterThanOrEqualTo(400));
+        // Place first tower at 100,100
+        await tester.tapAt(const Offset(100, 100));
+        await tester.pump();
+        game.update(0.1);
 
-        // Use WidgetTester to tap (Simulate clicking map at 100,100)
+        expect(game.children.whereType<Tower>().length, 1);
+        expect(game.money, 900);
+
+        // Try place second tower at same spot (collision)
         await tester.tapAt(const Offset(100, 100));
         await tester.pump();
 
-        // Wait for Pending Timers (GestureRecognizer) to expire
+        // Clear timers
         await tester.pump(const Duration(seconds: 1));
 
-        // Allow game loop to process addition (addLater)
+        // Clear timers
+        await tester.pump(const Duration(seconds: 1));
+
         game.update(0.1);
 
-        // Verify money deducted (500 - 400 = 100)
-        expect(game.money, 100);
-
-        // Verify tower added
+        // Should FAIL to add tower, Money should NOT decrease
         expect(game.children.whereType<Tower>().length, 1);
+        expect(game.money, 900);
       },
     );
   });
