@@ -1,14 +1,18 @@
+import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 import '../game/fruit_defender_game.dart';
 
-class Enemy extends SpriteComponent with HasGameRef<FruitDefenderGame> {
+class Enemy extends PositionComponent with HasGameRef<FruitDefenderGame> {
   final List<Vector2> waypoints;
   final double speed = 100.0;
   double health = 40.0;
   int currentWaypointIndex = 0;
+  Sprite? sprite;
+  final bool skipSprite;
 
-  Enemy(this.waypoints) : super(size: Vector2(32, 32)) {
+  Enemy(this.waypoints, {this.skipSprite = false})
+      : super(size: Vector2(32, 32)) {
     // Start at first waypoint
     if (waypoints.isNotEmpty) {
       position = waypoints[0];
@@ -18,9 +22,26 @@ class Enemy extends SpriteComponent with HasGameRef<FruitDefenderGame> {
 
   @override
   Future<void> onLoad() async {
-    sprite = await gameRef.loadSprite('enemy_apple.png');
+    if (!skipSprite) {
+      try {
+        sprite = await gameRef.loadSprite('enemy_apple.png');
+      } catch (e) {
+        print('Enemy sprite load failed: $e');
+      }
+    }
     await super.onLoad();
     _moveToNextWaypoint();
+  }
+
+  @override
+  void render(Canvas canvas) {
+    if (sprite != null) {
+      sprite!.render(canvas, position: Vector2.zero(), size: size);
+      return;
+    }
+    // Fallback render
+    canvas.drawCircle(Offset(size.x / 2, size.y / 2), size.x / 2,
+        Paint()..color = const Color(0xFFFF0000));
   }
 
   void _moveToNextWaypoint() {
@@ -34,12 +55,14 @@ class Enemy extends SpriteComponent with HasGameRef<FruitDefenderGame> {
     final nextPoint = waypoints[currentWaypointIndex + 1];
     final distance = position.distanceTo(nextPoint);
     final duration = distance / speed;
+    print('Distance: $distance, Duration: $duration');
 
     add(
       MoveToEffect(
         nextPoint,
         EffectController(duration: duration),
         onComplete: () {
+          print('Move complete');
           currentWaypointIndex++;
           _moveToNextWaypoint();
         },

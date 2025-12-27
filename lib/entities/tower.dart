@@ -7,7 +7,8 @@ import '../game/fruit_defender_game.dart';
 
 enum TowerType { WIZARD, SNIPER, NINJA, FACTORY, BERSERKER, MISSILE }
 
-class Tower extends SpriteComponent with HasGameRef<FruitDefenderGame> {
+class Tower extends PositionComponent with HasGameRef<FruitDefenderGame> {
+  Sprite? sprite;
   final TowerType type;
   double range = 200;
   double damage = 10;
@@ -33,7 +34,7 @@ class Tower extends SpriteComponent with HasGameRef<FruitDefenderGame> {
       case TowerType.FACTORY:
         range = 0;
         damage = 0;
-        fireRate = 5.0; // Production rate
+        fireRate = 10.0; // Production rate
         size = Vector2(40, 40);
         break;
       case TowerType.BERSERKER:
@@ -46,7 +47,7 @@ class Tower extends SpriteComponent with HasGameRef<FruitDefenderGame> {
         range = 250;
         damage = 40;
         fireRate = 2.5;
-        size = Vector2(32, 32);
+        size = Vector2(96, 96);
         break;
       case TowerType.WIZARD:
         range = 200;
@@ -74,8 +75,10 @@ class Tower extends SpriteComponent with HasGameRef<FruitDefenderGame> {
         spriteAsset = 'tower_factory.png';
         break;
       case TowerType.BERSERKER:
+        spriteAsset = 'defender_berserker.png';
+        break;
       case TowerType.MISSILE:
-        spriteAsset = null; // User requested black dots/no textures
+        spriteAsset = 'defender_missile.png';
         break;
       default:
         spriteAsset = null;
@@ -150,12 +153,34 @@ class Tower extends SpriteComponent with HasGameRef<FruitDefenderGame> {
       speed = 1000.0;
     }
 
+    String? projectileAsset;
+    switch (type) {
+      case TowerType.WIZARD:
+        projectileAsset = 'projectile_orb.png';
+        break;
+      case TowerType.NINJA:
+        projectileAsset = 'projectile_shuriken.png';
+        break;
+      case TowerType.SNIPER:
+        projectileAsset = 'projectile_bullet.png';
+        break;
+      case TowerType.MISSILE:
+        projectileAsset = 'projectile_rocket.png';
+        break;
+      case TowerType.BERSERKER:
+        projectileAsset = 'projectile_fist.png';
+        break;
+      default:
+        projectileAsset = null;
+    }
+
     final projectile = Projectile(
       position: position.clone(),
       target: target,
       damage: damage,
       speed: speed,
       splashRadius: splash,
+      spriteAsset: projectileAsset,
     );
     gameRef.add(projectile);
   }
@@ -163,7 +188,7 @@ class Tower extends SpriteComponent with HasGameRef<FruitDefenderGame> {
   @override
   void render(Canvas canvas) {
     if (sprite != null) {
-      super.render(canvas);
+      sprite!.render(canvas, position: Vector2.zero(), size: size);
       // No return here if we want to draw debug overlay, but usually we just want the sprite.
       // However, the original code had a return in my previous thought block.
       // Let's stick to: if sprite exists, draw it and exit.

@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flame/game.dart';
 import 'package:flame/events.dart';
 import 'package:flame/components.dart';
@@ -14,7 +15,10 @@ class FruitDefenderGame extends FlameGame with TapCallbacks {
   late LevelMap levelMap;
   int money = 500;
   int lives = 20;
-  TowerType selectedTower = TowerType.WIZARD;
+  final ValueNotifier<TowerType> selectedTowerNotifier =
+      ValueNotifier(TowerType.WIZARD);
+  TowerType get selectedTower => selectedTowerNotifier.value;
+  set selectedTower(TowerType type) => selectedTowerNotifier.value = type;
   final bool enableHud;
   final bool useGoogleFontsInHud;
   double timeScale = 1.0;
@@ -22,6 +26,7 @@ class FruitDefenderGame extends FlameGame with TapCallbacks {
   FruitDefenderGame({this.enableHud = true, this.useGoogleFontsInHud = true});
 
   bool isGameStarted = false;
+  late WaveManager waveManager;
 
   @override
   Future<void> onLoad() async {
@@ -33,7 +38,8 @@ class FruitDefenderGame extends FlameGame with TapCallbacks {
     add(Base(basePosition));
 
     // Wave Manager
-    add(WaveManager());
+    waveManager = WaveManager();
+    add(waveManager);
 
     // HUD
     if (enableHud) {
@@ -73,13 +79,24 @@ class FruitDefenderGame extends FlameGame with TapCallbacks {
     money = 500;
 
     // Clear entities
-    children.whereType<Enemy>().forEach((e) => e.removeFromParent());
-    children.whereType<Tower>().forEach((t) => t.removeFromParent());
-    children.whereType<Projectile>().forEach((p) => p.removeFromParent());
+    // Clear entities (use descendants to catch nested entities in World)
+    descendants()
+        .whereType<Enemy>()
+        .toList()
+        .forEach((e) => e.removeFromParent());
+    descendants()
+        .whereType<Tower>()
+        .toList()
+        .forEach((t) => t.removeFromParent());
+    descendants()
+        .whereType<Projectile>()
+        .toList()
+        .forEach((p) => p.removeFromParent());
 
     // Reset Wave
-    final waveManager = children.whereType<WaveManager>().first;
     waveManager.currentWave = 1;
+    waveManager.enemiesSpawned = 0;
+    waveManager.spawnTimer = 0;
     waveManager.enemiesSpawned = 0;
     waveManager.spawnTimer = 0;
 
@@ -89,6 +106,10 @@ class FruitDefenderGame extends FlameGame with TapCallbacks {
 
   @override
   void onTapDown(TapDownEvent event) {
+    handleTap(event.localPosition);
+  }
+
+  void handleTap(Vector2 position) {
     int cost = 100;
     switch (selectedTower) {
       case TowerType.SNIPER:
@@ -117,34 +138,40 @@ class FruitDefenderGame extends FlameGame with TapCallbacks {
       bool canPlace = true;
 
       // Check collision with other towers
+      // Use children for direct access
       for (final child in children.whereType<Tower>()) {
-        if (child.position.distanceTo(event.localPosition) < 40) {
+        if (child.position.distanceTo(position) < 40) {
           // Assume 40px radius/size
           canPlace = false;
           break;
         }
       }
 
+      print('Checking collision: Money=$money Cost=$cost');
       // Check collision with path
       if (canPlace) {
-        // Iterate waypoints
+        // Iterate path segments
         for (int i = 0; i < levelMap.waypoints.length - 1; i++) {
           final p1 = levelMap.waypoints[i];
-          // Hack: Check distance to waypoints. Ideally upgrade later.
-          if (p1.distanceTo(event.localPosition) < 32) {
+          final p2 = levelMap.waypoints[i + 1];
+          final d = _getDistanceFromPointToLineSegment(position, p1, p2);
+
+          // 32px threshold
+          if (d < 32) {
+            print('Collision with path segment $i ($p1 -> $p2) dist=$d');
             canPlace = false;
+            break;
           }
-        }
-        // Also check last waypoint (base)
-        if (levelMap.waypoints.last.distanceTo(event.localPosition) < 32) {
-          canPlace = false;
         }
       }
 
+      print('CanPlace result: $canPlace');
+
       if (canPlace) {
         money -= cost;
-        final tower = Tower(position: event.localPosition, type: selectedTower);
+        final tower = Tower(position: position, type: selectedTower);
         add(tower);
+        print('Tower added');
       }
     }
   }
@@ -157,5 +184,20 @@ class FruitDefenderGame extends FlameGame with TapCallbacks {
       Paint()..color = const Color(0xFF44AA44), // Grass green
     );
     super.render(canvas);
+  }
+
+  double _getDistanceFromPointToLineSegment(Vector2 p, Vector2 a, Vector2 b) {
+    final segment = b - a;
+    final lengthSquared = segment.length2;
+    if (lengthSquared == 0) return p.distanceTo(a);
+
+    final t =
+        ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / lengthSquared;
+
+    // Clamp t to segment range [0, 1]
+    final tClamped = t.clamp(0.0, 1.0);
+
+    final closestPoint = a + segment * tClamped;
+    return p.distanceTo(closestPoint);
   }
 }
